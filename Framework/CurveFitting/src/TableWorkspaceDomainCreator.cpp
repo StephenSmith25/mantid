@@ -179,9 +179,9 @@ void TableWorkspaceDomainCreator::declareDatasetProperties(
   m_endXPropertyName = "EndX" + suffix;
   m_maxSizePropertyName = "MaxSize" + suffix;
   m_excludePropertyName = "Exclude" + suffix;
-  m_xColumnPropertyName = "XColumnName" + suffix;
-  m_yColumnPropertyName = "YColumnName" + suffix;
-  m_errorColumnPropertyName = "ErrorColumnName" + suffix;
+  m_xColumnPropertyName = "XColumn" + suffix;
+  m_yColumnPropertyName = "YColumn" + suffix;
+  m_errorColumnPropertyName = "ErrColumn" + suffix;
 
   if (addProp) {
     auto mustBePositive = boost::make_shared<BoundedValidator<int>>();

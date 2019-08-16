@@ -385,6 +385,7 @@ public:
     double endX() const;
     void setEndX(double end);
     void setXRange(double start, double end);
+    QVector<double> getXRange();
     int workspaceIndex() const;
     void setWorkspaceIndex(int i);
     QStringList getWorkspaceNames();

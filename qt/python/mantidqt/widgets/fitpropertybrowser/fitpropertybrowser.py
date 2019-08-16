@@ -12,7 +12,7 @@ from __future__ import (print_function, absolute_import, unicode_literals)
 from qtpy.QtCore import Qt, Signal, Slot
 
 from mantid import logger
-from mantid.api import AlgorithmManager, AnalysisDataService
+from mantid.api import AlgorithmManager, AnalysisDataService, ITableWorkspace
 from mantid.simpleapi import mtd
 from mantidqt.utils.qt import import_qt
 
@@ -98,6 +98,9 @@ class FitPropertyBrowser(FitPropertyBrowserBase):
         Set if the data should be normalised before fitting using the
         normalisation state of the active workspace artist.
         """
+        if AnalysisDataService.doesExist(self.workspaceName()) \
+                and isinstance(AnalysisDataService.retrieve(self.workspaceName()), ITableWorkspace):
+            return
         ws_artist = self._get_selected_workspace_artist()
         self.normaliseData(ws_artist.is_normalized)
 
@@ -115,11 +118,12 @@ class FitPropertyBrowser(FitPropertyBrowserBase):
         allowed_spectra = self._get_allowed_spectra()
         if allowed_spectra:
             self._add_spectra(allowed_spectra)
-        else:
-            self.toolbar_manager.toggle_fit_button_checked()
-            logger.warning("Cannot open fitting tool: No valid workspaces to "
-                           "fit to.")
-            return
+        # TODO: find way round this
+        # else:
+        #     self.toolbar_manager.toggle_fit_button_checked()
+        #     logger.warning("Cannot open fitting tool: No valid workspaces to "
+        #                    "fit to.")
+        #     return
 
         self.tool = FitInteractiveTool(self.canvas, self.toolbar_manager,
                                        current_peak_type=self.defaultPeakType())
@@ -149,12 +153,12 @@ class FitPropertyBrowser(FitPropertyBrowserBase):
 
     def get_workspace_x_range(self, workspace):
         """
-        Gets the x limits of a matrix workspace
+        Gets the x limits of a workspace
         :param workspace: The workspace to get the limits from
         """
         try:
-            x_data = workspace.dataX(self.workspaceIndex())
-            return [x_data[0], x_data[-1]]
+            xData = self.getXRange()
+            return xData
         except RuntimeError or IndexError:
             return None
 

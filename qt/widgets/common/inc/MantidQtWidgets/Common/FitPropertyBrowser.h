@@ -20,6 +20,7 @@
 #include "MantidAPI/FunctionFactory.h"
 #include "MantidAPI/IFunction.h"
 #include "MantidAPI/IPeakFunction.h"
+#include "MantidAPI/ITableWorkspace.h"
 #include "MantidAPI/MatrixWorkspace_fwd.h"
 #include "MantidQtWidgets/Common/IWorkspaceFitControl.h"
 #include "MantidQtWidgets/Common/WorkspaceObserver.h"
@@ -139,6 +140,10 @@ public:
 
   /// Get the workspace
   boost::shared_ptr<Mantid::API::Workspace> getWorkspace() const;
+  /// Get a table workspace containing the relevant column
+  boost::shared_ptr<Mantid::API::ITableWorkspace>
+  getTableWorkspaceWithOnlyUsefulColumns(
+      Mantid::API::ITableWorkspace_sptr ws) const;
   /// Get the input workspace name
   std::string workspaceName() const;
   /// Set the input workspace name
@@ -169,6 +174,8 @@ public:
   int maxIterations() const;
   /// Get the peak radius for peak functions
   int getPeakRadius() const;
+  /// Get the X limits of the workspace
+  QVector<double> getXRange();
 
   /// Get the start X
   double startX() const;
@@ -263,8 +270,6 @@ public:
   /// Returns the list of workspaces that are currently been worked on by the
   /// fit property browser.
   QStringList getWorkspaceNames();
-  /// Create a MatrixWorkspace from a TableWorkspace
-  Mantid::API::Workspace_sptr createMatrixFromTableWorkspace() const;
 
   /// Allow or disallow sequential fits (depending on whether other conditions
   /// are met)

@@ -1115,14 +1115,31 @@ FitPropertyBrowser::getWorkspace() const {
   if (wsName.empty())
     return boost::shared_ptr<Mantid::API::Workspace>();
   try {
-    if (m_settingsGroup->property()->subProperties().contains(m_xColumn)) {
-      return createMatrixFromTableWorkspace();
+    auto ws = Mantid::API::AnalysisDataService::Instance().retrieve(wsName);
+    if (auto tbl =
+            boost::dynamic_pointer_cast<Mantid::API::ITableWorkspace>(ws)) {
+      return getTableWorkspaceWithOnlyUsefulColumns(tbl);
+    } else {
+      return ws;
     }
-
-    return Mantid::API::AnalysisDataService::Instance().retrieve(wsName);
   } catch (...) {
     return boost::shared_ptr<Mantid::API::Workspace>();
   }
+}
+
+boost::shared_ptr<Mantid::API::ITableWorkspace>
+FitPropertyBrowser::getTableWorkspaceWithOnlyUsefulColumns(
+    Mantid::API::ITableWorkspace_sptr ws) const {
+  auto columnNames = ws->getColumnNames();
+  std::vector<std::string> columns;
+  // TODO:: check these exist
+  columns.push_back(columnNames[m_columnManager->value(m_xColumn)]);
+  m_columnManager->setValue(m_xColumn, 0);
+  columns.push_back(columnNames[m_columnManager->value(m_yColumn)]);
+  m_columnManager->setValue(m_yColumn, 1);
+  columns.push_back(columnNames[m_columnManager->value(m_errColumn) - 1.0]);
+  m_columnManager->setValue(m_errColumn, 2);
+  return ws->cloneColumns(columns);
 }
 
 /// Get the input workspace name
@@ -1641,7 +1658,31 @@ void FitPropertyBrowser::doFit(int maxIterations) {
     }
     alg->setPropertyValue("Function", funStr);
     alg->setProperty("InputWorkspace", ws);
-    alg->setProperty("WorkspaceIndex", workspaceIndex());
+    auto tbl = boost::dynamic_pointer_cast<ITableWorkspace>(ws);
+    if (!tbl) {
+      alg->setProperty("WorkspaceIndex", workspaceIndex());
+    } else {
+      auto columns = tbl->getColumnNames();
+      auto xIndex = m_columnManager->value(m_xColumn);
+      if (xIndex >= static_cast<int>(columns.size())) {
+        QMessageBox::critical(nullptr, "Mantid - Error",
+                              "X column was not found.");
+      }
+      alg->setPropertyValue("XColumn", columns[xIndex]);
+      auto yIndex = m_columnManager->value(m_yColumn);
+      if (yIndex >= static_cast<int>(columns.size())) {
+        QMessageBox::critical(nullptr, "Mantid - Error",
+                              "Y column was not found.");
+      }
+      alg->setPropertyValue("YColumn", columns[yIndex]);
+      auto errIndex = m_columnManager->value(m_errColumn);
+      if (errIndex >= static_cast<int>(columns.size())) {
+        QMessageBox::warning(nullptr, "Mantid - Warning",
+                             "Error column was not found.");
+      } else if (errIndex != -1) {
+        alg->setPropertyValue("ErrColumn", columns[errIndex]);
+      }
+    }
     alg->setProperty("StartX", startX());
     alg->setProperty("EndX", endX());
     alg->setPropertyValue("Output", outputName());
@@ -1651,7 +1692,9 @@ void FitPropertyBrowser::doFit(int maxIterations) {
     alg->setProperty("MaxIterations", maxIterations);
     alg->setProperty("PeakRadius", getPeakRadius());
     if (!isHistogramFit()) {
-      alg->setProperty("Normalise", m_shouldBeNormalised);
+      if (!tbl) {
+        alg->setProperty("Normalise", m_shouldBeNormalised);
+      }
       // Always output each composite function but not necessarily plot it
       alg->setProperty("OutputCompositeMembers", true);
       if (alg->existsProperty("ConvolveMembers")) {
@@ -1917,6 +1960,28 @@ void FitPropertyBrowser::setXRange(double start, double end) {
   connect(m_doubleManager, SIGNAL(propertyChanged(QtProperty *)), this,
           SLOT(doubleChanged(QtProperty *)));
 #endif
+}
+
+QVector<double> FitPropertyBrowser::getXRange() {
+  auto ws = getWorkspace();
+  auto tbl = boost::dynamic_pointer_cast<ITableWorkspace>(ws);
+  auto mws = boost::dynamic_pointer_cast<MatrixWorkspace>(ws);
+  QVector<double> range;
+  if (tbl) {
+    auto xColumnIndex = m_columnManager->value(m_xColumn);
+    std::vector<double> xColumnData;
+    for (auto i = 0; i < tbl->rowCount(); ++i) {
+      xColumnData.push_back(tbl->Double(i, xColumnIndex));
+    }
+    std::sort(xColumnData.begin(), xColumnData.end());
+    range.push_back(xColumnData.front());
+    range.push_back(xColumnData.back());
+  } else if (mws) {
+    auto xData = mws->mutableX(workspaceIndex());
+    range.push_back(xData.front());
+    range.push_back(xData.back());
+  }
+  return range;
 }
 
 ///
@@ -3079,6 +3144,7 @@ void FitPropertyBrowser::setWorkspaceProperties() {
         errName = QString::fromStdString(name);
       }
     }
+    // need to match this up with clone of table workspace somehow!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     m_columnManager->setEnumNames(m_xColumn, columns);
     m_columnManager->setEnumNames(m_yColumn, columns);
     // set the column values
@@ -3118,78 +3184,6 @@ void FitPropertyBrowser::addWorkspaceIndexToBrowser() {
       m_settingsGroup->property()->insertSubProperty(m_workspaceIndex,
                                                      m_workspace);
     }
-  }
-}
-
-/**=================================================================================================
- * Create a MatrixWorkspace from a TableWorkspace. Name of the TableWorkspace
- * is in m_workspace property, column names to use are in m_xColumn,
- * m_yColumn, and m_errColumn.
- */
-Mantid::API::Workspace_sptr
-FitPropertyBrowser::createMatrixFromTableWorkspace() const {
-  std::string wsName = workspaceName();
-  try {
-    auto ws = Mantid::API::AnalysisDataService::Instance().retrieve(wsName);
-    auto tws = boost::dynamic_pointer_cast<Mantid::API::ITableWorkspace>(ws);
-    if (!tws)
-      return boost::shared_ptr<Mantid::API::Workspace>();
-    const size_t rowCount = tws->rowCount();
-    if (rowCount == 0) {
-      QMessageBox::critical(nullptr, "Mantid - Error",
-                            "TableWorkspace is empty.");
-      return boost::shared_ptr<Mantid::API::Workspace>();
-    }
-
-    auto columns = tws->getColumnNames();
-
-    // get the x column
-    int ix = m_columnManager->value(m_xColumn);
-    if (ix >= static_cast<int>(columns.size())) {
-      QMessageBox::critical(nullptr, "Mantid - Error",
-                            "X column was not found.");
-      return boost::shared_ptr<Mantid::API::Workspace>();
-    }
-    auto xcol = tws->getColumn(columns[ix]);
-
-    // get the y column
-    int iy = m_columnManager->value(m_yColumn);
-    if (iy >= static_cast<int>(columns.size())) {
-      QMessageBox::critical(nullptr, "Mantid - Error",
-                            "Y column was not found.");
-      return boost::shared_ptr<Mantid::API::Workspace>();
-    }
-    auto ycol = tws->getColumn(columns[iy]);
-
-    // get the err column
-    int ie =
-        m_columnManager->value(m_errColumn) - 1; // first entry is empty string
-    if (ie >= 0 && ie >= static_cast<int>(columns.size())) {
-      QMessageBox::critical(nullptr, "Mantid - Error",
-                            "Error column was not found.");
-      return boost::shared_ptr<Mantid::API::Workspace>();
-    }
-    auto ecol =
-        ie < 0 ? Mantid::API::Column_sptr() : tws->getColumn(columns[ie]);
-
-    // create the MatrixWorkspace
-    Mantid::API::MatrixWorkspace_sptr mws =
-        Mantid::API::WorkspaceFactory::Instance().create("Workspace2D", 1,
-                                                         rowCount, rowCount);
-    auto &X = mws->mutableX(0);
-    auto &Y = mws->mutableY(0);
-    auto &E = mws->mutableE(0);
-
-    for (size_t row = 0; row < rowCount; ++row) {
-      X[row] = xcol->toDouble(row);
-      Y[row] = ycol->toDouble(row);
-      E[row] = ecol ? ecol->toDouble(row) : 1.0;
-    }
-
-    return mws;
-  } catch (std::exception &e) {
-    QMessageBox::critical(nullptr, "Mantid - Error", e.what());
-    return boost::shared_ptr<Mantid::API::Workspace>();
   }
 }
 
