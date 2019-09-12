@@ -480,8 +480,7 @@ public:
 
   void testStartMonitorUpdatesView() {
     auto presenter = makePresenter();
-    ON_CALL(m_view, getLiveDataUpdateInterval())
-        .WillByDefault(Return("20"));
+    ON_CALL(m_view, getLiveDataUpdateInterval()).WillByDefault(Return("20"));
     expectStartingLiveDataSucceeds();
     expectUpdateViewWhenMonitorStarting();
     presenter.notifyStartMonitor();
@@ -495,7 +494,8 @@ public:
     expectGetLiveDataOptions(instrument);
     auto algRunner = expectGetAlgorithmRunner();
     presenter.notifyStartMonitor();
-    auto expected = defaultLiveMonitorAlgorithmOptions(instrument, updateInterval);
+    auto expected =
+        defaultLiveMonitorAlgorithmOptions(instrument, updateInterval);
     assertAlgorithmPropertiesContainOptions(expected, algRunner);
     verifyAndClear();
   }
@@ -610,7 +610,8 @@ private:
   }
 
   AlgorithmRuntimeProps
-  defaultLiveMonitorAlgorithmOptions(const std::string &instrument, const std::string &updateInterval) {
+  defaultLiveMonitorAlgorithmOptions(const std::string &instrument,
+                                     const std::string &updateInterval) {
     return AlgorithmRuntimeProps{
         {"Instrument", instrument},
         {"OutputWorkspace", "IvsQ_binned_live"},
