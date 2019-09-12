@@ -480,6 +480,8 @@ public:
 
   void testStartMonitorUpdatesView() {
     auto presenter = makePresenter();
+    ON_CALL(m_view, getLiveDataUpdateInterval())
+        .WillByDefault(Return("20"));
     expectStartingLiveDataSucceeds();
     expectUpdateViewWhenMonitorStarting();
     presenter.notifyStartMonitor();
@@ -489,10 +491,11 @@ public:
   void testStartMonitorSetsAlgorithmProperties() {
     auto presenter = makePresenter();
     auto instrument = std::string("INTER");
+    auto updateInterval = std::string("20");
     expectGetLiveDataOptions(instrument);
     auto algRunner = expectGetAlgorithmRunner();
     presenter.notifyStartMonitor();
-    auto expected = defaultLiveMonitorAlgorithmOptions(instrument);
+    auto expected = defaultLiveMonitorAlgorithmOptions(instrument, updateInterval);
     assertAlgorithmPropertiesContainOptions(expected, algRunner);
     verifyAndClear();
   }
@@ -607,13 +610,13 @@ private:
   }
 
   AlgorithmRuntimeProps
-  defaultLiveMonitorAlgorithmOptions(const std::string &instrument) {
+  defaultLiveMonitorAlgorithmOptions(const std::string &instrument, const std::string &updateInterval) {
     return AlgorithmRuntimeProps{
         {"Instrument", instrument},
         {"OutputWorkspace", "IvsQ_binned_live"},
         {"AccumulationWorkspace", "TOF_live"},
         {"AccumulationMethod", "Replace"},
-        {"UpdateEvery", (m_view.getLiveDataUpdateInterval())},
+        {"UpdateEvery", updateInterval},
         {"PostProcessingAlgorithm", "ReflectometryReductionOneLiveData"},
         {"RunTransitionBehavior", "Restart"},
     };
