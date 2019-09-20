@@ -67,7 +67,9 @@ set(QT5_SRC_FILES
     src/QtSignalChannel.cpp
     src/QtJSONUtils.cpp
     src/RenameParDialog.cpp
+	src/RepoModel.cpp
     src/ScriptEditor.cpp
+    src/ScriptRepositoryView.cpp
     src/SequentialFitDialog.cpp
     src/SelectFunctionDialog.cpp
     src/SelectWorkspacesDialog.cpp
@@ -178,7 +180,10 @@ set(
   inc/MantidQtWidgets/Common/PythonRunner.h
   inc/MantidQtWidgets/Common/QtSignalChannel.h
   inc/MantidQtWidgets/Common/RenameParDialog.h
+  inc/MantidQtWidgets/Common/RepoModel.h
+  inc/MantidQtWidgets/Common/RepoTreeView.h
   inc/MantidQtWidgets/Common/ScriptEditor.h
+  inc/MantidQtWidgets/Common/ScriptRepositoryView.h
   inc/MantidQtWidgets/Common/SequentialFitDialog.h
   inc/MantidQtWidgets/Common/SelectFunctionDialog.h
   inc/MantidQtWidgets/Common/SelectWorkspacesDialog.h
@@ -285,6 +290,7 @@ set(QT5_UI_FILES
     inc/MantidQtWidgets/Common/pqHelpWindow.ui
     inc/MantidQtWidgets/Common/ProcessingAlgoWidget.ui
     inc/MantidQtWidgets/Common/RenameParDialog.ui
+	inc/MantidQtWidgets/Common/ScriptRepositoryView.ui
     inc/MantidQtWidgets/Common/SequentialFitDialog.ui
     inc/MantidQtWidgets/Common/SelectFunctionDialog.ui
     inc/MantidQtWidgets/Common/SlitCalculator.ui
@@ -732,9 +738,6 @@ set(
   inc/MantidQtWidgets/Common/Python/Object.h)
 
 set(UI_FILES
-    inc/MantidQtWidgets/Common/ManageUserDirectories.ui
-    inc/MantidQtWidgets/Common/MWRunFiles.ui
-    inc/MantidQtWidgets/Common/ScriptRepositoryView.ui
     inc/MantidQtWidgets/Common/DataProcessorUI/DataProcessorOptionsDialog.ui
     inc/MantidQtWidgets/Common/DataProcessorUI/DataProcessorWidget.ui
     inc/MantidQtWidgets/Common/DataSelector.ui
@@ -742,10 +745,13 @@ set(UI_FILES
     inc/MantidQtWidgets/Common/CatalogSelector.ui
     inc/MantidQtWidgets/Common/EditLocalParameterDialog.ui
     inc/MantidQtWidgets/Common/LogValueSelector.ui
+	inc/MantidQtWidgets/Common/ManageUserDirectories.ui
     inc/MantidQtWidgets/Common/MultifitSetupDialog.ui
     inc/MantidQtWidgets/Common/MuonFitDataSelector.ui
+    inc/MantidQtWidgets/Common/MWRunFiles.ui
     inc/MantidQtWidgets/Common/ProcessingAlgoWidget.ui
     inc/MantidQtWidgets/Common/RenameParDialog.ui
+    inc/MantidQtWidgets/Common/ScriptRepositoryView.ui
     inc/MantidQtWidgets/Common/SelectFunctionDialog.ui
     inc/MantidQtWidgets/Common/SequentialFitDialog.ui
     inc/MantidQtWidgets/Common/SlicingAlgorithmDialog.ui
@@ -903,6 +909,7 @@ set(TEST_FILES
     test/ProgressableViewTest.h
     test/ProjectSaveModelTest.h
     test/ProjectSavePresenterTest.h
+	test/ScriptRepositoryViewTest.h
     test/SelectionNotificationServiceTest.h
     test/SignalBlockerTest.h
     test/TrackedActionTest.h
