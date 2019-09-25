@@ -13,6 +13,7 @@
 
 #include "MantidQtWidgets/Common/ScriptRepositoryView.h"
 #include "MockScriptRepository.h"
+#include "MantidAPI/ScriptRepositoryFactory.h"
 
 using MantidQt::API::ScriptRepositoryView;
 using namespace testing;
@@ -26,13 +27,14 @@ public:
   }
   static void destroySuite(ScriptRepositoryViewTest *suite) { delete suite; }
 
-  void test_scriptRepository_tries_to_install_before_creation() {
-    ScriptRepositoryView();
-  }
+  void test_scriptRepository_tries_to_install_before_creation() {}
 
   void test_no_widget_is_created_if_install_fails() {}
 
-  void test_widget_is_created_if_already_install() {}
+  void test_widget_is_created_if_already_install() {
+		ScriptRepositoryView();
+
+	}
 
   void test_file_loads_if_cell_selected() {}
 
@@ -47,7 +49,7 @@ public:
   void test_Openfolderlink() {}
 
 private:
-	NiceMock<Mantid::API::MockScriptRepositoryImpl> m_scriptRepoImpl;
+  NiceMock<Mantid::API::MockScriptRepositoryImpl> m_scriptRepoImpl;
 };
 
 #endif /*MANTIDWIDGETS_SCRIPTREPOSITORYVIEWTEST_H_ */
