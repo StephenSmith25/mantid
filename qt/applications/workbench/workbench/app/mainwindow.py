@@ -615,7 +615,7 @@ class MainWindow(QMainWindow):
     def open_script_repository(self):
         self.script_repository = ScriptRepositoryView(self)
         self.script_repository.loadScript.connect(self.editor.open_file_in_new_tab)
-        self.script_repository.setAttribute(Qt.WA_DeleteOnClose)
+        self.script_repository.setAttribute(Qt.WA_DeleteOnClose, True)
         self.script_repository.show()
 
     def open_settings_window(self):
