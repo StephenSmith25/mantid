@@ -12,6 +12,8 @@
 //----------------------------------------------------------------------
 #include "MantidAPI/DllConfig.h"
 #include "MantidAPI/GridDomain.h"
+#include <stdexcept>
+#include <string>
 
 #include <stdexcept>
 #include <string>

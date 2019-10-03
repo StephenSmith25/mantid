@@ -9,6 +9,7 @@
 
 #include "MantidAPI/DllConfig.h"
 #include "MantidAPI/MatrixWorkspace_fwd.h"
+#include <string>
 
 #include <string>
 
