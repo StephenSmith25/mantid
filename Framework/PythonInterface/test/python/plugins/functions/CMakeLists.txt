@@ -19,6 +19,9 @@ set(TEST_PY_FILES
     MsdPetersTest.py
     MsdYiTest.py
     MuHTest.py
+    PCRmagnetTest.py
+    PCRmagnetRedfieldTest.py
+    PCRmagnetfnormTest.py
     RFresonanceTest.py
     SilverBaselineTest.py
     StandardSCTest.py
