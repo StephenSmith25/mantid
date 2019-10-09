@@ -11,12 +11,14 @@
 #include "GUI/Common/Decoder.h"
 #include "GUI/Common/Encoder.h"
 #include "GUI/Common/Plotter.h"
+#include "MantidQtWidgets/Common/OptionsDialog.h"
 #include "MantidQtWidgets/Common/SlitCalculator.h"
 #include <QMessageBox>
 #include <QToolButton>
 
 namespace MantidQt {
 
+using MantidWidgets::OptionsDialog;
 using MantidWidgets::SlitCalculator;
 
 namespace CustomInterfaces {
@@ -100,8 +102,9 @@ void QtMainWindowView::initLayout() {
 
   // Create the presenter
   auto slitCalculator = std::make_unique<SlitCalculator>(this);
+  auto optionsDialog = std::make_unique<OptionsDialog>(this);
   m_presenter = std::make_unique<MainWindowPresenter>(
-      this, messageHandler, std::move(slitCalculator),
+      this, messageHandler, std::move(slitCalculator), std::move(optionsDialog),
       std::move(makeBatchPresenter));
 
   m_notifyee->notifyNewBatchRequested();
