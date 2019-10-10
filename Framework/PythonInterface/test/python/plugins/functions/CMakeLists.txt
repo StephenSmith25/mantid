@@ -6,6 +6,7 @@ set(TEST_PY_FILES
     AttributeTest.py
     BesselTest.py
     CombGaussLorentzKTTest.py
+    CompositePCRmagnetTest.py
     DSFinterp1DFitTest.py
     EISFDiffSphereTest.py
     EISFDiffCylinderTest.py
