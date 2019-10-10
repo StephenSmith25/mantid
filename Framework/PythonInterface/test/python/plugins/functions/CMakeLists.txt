@@ -19,6 +19,7 @@ set(TEST_PY_FILES
     MsdPetersTest.py
     MsdYiTest.py
     MuHTest.py
+    MuMinusExpTFTest.py
     PCRmagnetTest.py
     PCRmagnetZFKTTest.py
     PCRmagnetRedfieldTest.py
