@@ -18,6 +18,7 @@ from mantid.kernel import config
 from mantid.plots.plotfunctions import get_colorplot_extents
 from mantid.py3compat.mock import Mock, patch
 from mantid.simpleapi import (CreateWorkspace, CreateSampleWorkspace, DeleteWorkspace)
+from mantidqt.plotting.markers import SingleMarker
 
 
 class Plots__init__Test(unittest.TestCase):
@@ -363,6 +364,33 @@ class Plots__init__Test(unittest.TestCase):
                               OutputWorkspace="ws2")
         self.ax.errorbar(ws2, autoscale_on_update=False)
         self.assertLess(self.ax.get_ylim()[1], 5000)
+
+    def test_that_relim_ignores_interactive_markers(self):
+        """
+        When calling .relim the content limits of the axes is calculated
+        and a margin added. When the axes is resized the interactive
+        markers re-calculate their limits to be the new axes limits,
+        i.e. the original limits plus the margin. This mean repeatedly
+        calling relim and autoscale will zoom out on the axes.
+
+        This test makes sure this isn't happening and that the markers
+        are ignored when calling .relim in this case.
+        """
+        fig, ax = plt.subplots(subplot_kw={'projection': 'mantid'})
+        ax.plot([0, 1], [0, 1])
+        y_min, y_max = ax.get_ylim()
+        SingleMarker(
+            fig.canvas,
+            'g',
+            0.5,
+            y_min,
+            y_max,
+            marker_type='XSingle',
+            axis=ax
+        )
+        ax.relim()
+        ax.autoscale()
+        np.testing.assert_almost_equal((y_min, y_max), ax.get_ylim())
 
     def _run_check_axes_distribution_consistency(self, normalization_states):
         mock_tracked_workspaces = {
