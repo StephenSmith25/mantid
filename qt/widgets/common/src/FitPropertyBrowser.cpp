@@ -495,12 +495,12 @@ void FitPropertyBrowser::initBasicLayout(QWidget *w) {
   layout->addWidget(m_browser);
   m_browser->setObjectName("tree_browser");
 
-   m_workspaceLabel = new QLabel("Workspaces");
-   layout->addWidget(m_workspaceLabel);
-   m_wsListWidget = new QListWidget();
-   layout->addWidget(m_wsListWidget);
-   m_workspaceLabel->hide();
-   m_wsListWidget->hide();
+  m_workspaceLabel = new QLabel("Workspaces");
+  layout->addWidget(m_workspaceLabel);
+  m_wsListWidget = new QListWidget();
+  layout->addWidget(m_wsListWidget);
+  m_workspaceLabel->hide();
+  m_wsListWidget->hide();
 
   setWidget(w);
 
@@ -570,7 +570,7 @@ void FitPropertyBrowser::addFitResultWorkspacesToTableWidget() {
   auto noOfItems = m_wsListWidget->count();
   auto height = m_wsListWidget->sizeHintForRow(0) * (noOfItems + 1) +
                 2 * m_wsListWidget->frameWidth();
-  m_wsListWidget->setFixedHeight(height);
+  m_wsListWidget->setMaximumHeight(height);
 }
 
 void FitPropertyBrowser::workspaceDoubleClicked(QListWidgetItem *item) {
