@@ -7,6 +7,7 @@ set(TEST_PY_FILES
     BesselTest.py
     CombGaussLorentzKTTest.py
     CompositePCRmagnetTest.py
+    DampedBesselTest.py
     DSFinterp1DFitTest.py
     EISFDiffSphereTest.py
     EISFDiffCylinderTest.py
@@ -31,6 +32,7 @@ set(TEST_PY_FILES
     PCRmagnetfnormTest.py
     RFresonanceTest.py
     SilverBaselineTest.py
+    SpinGlassTest.py
     StandardSCTest.py
     StaticLorentzianKTTest.py
     StretchedExpFTTest.py
@@ -38,12 +40,15 @@ set(TEST_PY_FILES
     SCgapDwaveTest.py
     SCgapPwaveTest.py
     SCgapSwaveTest.py
+    StretchedKTTest.py
     TeixeiraWaterTest.py
+    TFMuoniumTest.py
     TriangleOscTest.py
     TFMuoniumTest.py
     ZFdipoleTest.py
     ZFprotonDipoleTest.py
     ZFelectronDipoleTest.py)
+    ZFMuoniumTest.py)
 
 check_tests_valid(${CMAKE_CURRENT_SOURCE_DIR} ${TEST_PY_FILES})
 
