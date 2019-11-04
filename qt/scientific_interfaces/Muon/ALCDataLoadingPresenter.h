@@ -17,6 +17,7 @@
 #include <QObject>
 
 #include <atomic>
+#include <Poco/ActiveResult.h>
 
 namespace MantidQt {
 namespace CustomInterfaces {
@@ -28,6 +29,7 @@ class MANTIDQT_MUONINTERFACE_DLL ALCDataLoadingPresenter : public QObject {
 
 public:
   ALCDataLoadingPresenter(IALCDataLoadingView *view);
+  ~ALCDataLoadingPresenter();
 
   void initialize();
 
@@ -91,6 +93,10 @@ private:
 
   /// Number of detectors for current first run
   size_t m_numDetectors;
+
+  // create a ActiveResult object
+  const Poco::ActiveResult<bool> * m_result;
+
 };
 
 } // namespace CustomInterfaces

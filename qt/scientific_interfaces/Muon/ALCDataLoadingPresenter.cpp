@@ -17,7 +17,7 @@
 
 #include <Poco/ActiveResult.h>
 #include <Poco/Path.h>
-
+#include <iostream>
 #include <QApplication>
 #include <QDir>
 #include <QFileInfo>
@@ -31,7 +31,20 @@ using namespace MantidQt::API;
 namespace MantidQt {
 namespace CustomInterfaces {
 ALCDataLoadingPresenter::ALCDataLoadingPresenter(IALCDataLoadingView *view)
-    : m_view(view), m_directoryChanged(false), m_timerID(), m_numDetectors(0) {}
+    : m_view(view), m_directoryChanged(false), m_timerID(), m_numDetectors(0), m_result(nullptr) {}
+
+
+ALCDataLoadingPresenter::~ALCDataLoadingPresenter(){
+  // check whether execution thread exists
+  if ( m_result != nullptr)
+  {
+     while (!m_result->available()) {
+      QCoreApplication::processEvents();
+    }
+  }
+}
+
+
 
 void ALCDataLoadingPresenter::initialize() {
   m_view->initialize();
@@ -189,15 +202,17 @@ void ALCDataLoadingPresenter::load(const std::string &lastFile) {
 
     // Execute async so we can show progress bar
     Poco::ActiveResult<bool> result(alg->executeAsync());
+    m_result = &result;
     while (!result.available()) {
       QCoreApplication::processEvents();
     }
     if (!result.error().empty()) {
       throw std::runtime_error(result.error());
     }
+    m_result = nullptr;
+    
 
     MatrixWorkspace_sptr tmp = alg->getProperty("OutputWorkspace");
-
     IAlgorithm_sptr sortAlg = AlgorithmManager::Instance().create("SortXAxis");
     sortAlg->setChild(true); // Don't want workspaces in the ADS
     sortAlg->setProperty("InputWorkspace", tmp);
@@ -211,23 +226,27 @@ void ALCDataLoadingPresenter::load(const std::string &lastFile) {
     assert(m_loadedData);
     // If subtract is not checked, only one spectrum,
     // else four spectra
-    if (!m_view->subtractIsChecked()) {
-      assert(m_loadedData->getNumberHistograms() == 1);
-    } else {
-      assert(m_loadedData->getNumberHistograms() == 4);
-    }
-
+    if ( m_view)
+    {
+      if (!m_view->subtractIsChecked()) {
+        assert(m_loadedData->getNumberHistograms() == 1);
+      } else {
+        assert(m_loadedData->getNumberHistograms() == 4);
+      }
     // Plot spectrum 0. It is either red period (if subtract is unchecked) or
     // red - green (if subtract is checked)
-    m_view->setDataCurve(m_loadedData);
+      m_view->setDataCurve(m_loadedData);
 
-    emit dataChanged();
+      emit dataChanged();
+    }
+
 
   } catch (std::exception &e) {
     m_view->displayError(e.what());
   }
-
-  m_view->enableAll();
+  if (m_view){
+    m_view->enableAll();
+  }
 }
 
 void ALCDataLoadingPresenter::updateAvailableInfo() {
