@@ -12,6 +12,7 @@
 #include "DllConfig.h"
 
 #include "MantidQtWidgets/Common/UserSubWindow.h"
+#include "MantidAPI/AlgorithmManager.h"
 
 #include "ui_ALCInterface.h"
 
@@ -35,6 +36,7 @@ class MANTIDQT_MUONINTERFACE_DLL ALCInterface : public API::UserSubWindow {
 
 public:
   ALCInterface(QWidget *parent = nullptr);
+  ~ALCInterface();
 
   static std::string name() { return "ALC"; }
   static QString categoryInfo() { return "Muon"; }

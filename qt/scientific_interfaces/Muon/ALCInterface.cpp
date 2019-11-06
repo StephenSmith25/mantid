@@ -23,6 +23,8 @@
 #include "MantidAPI/MatrixWorkspace.h"
 #include "MantidAPI/WorkspaceGroup.h"
 
+#include <iostream>
+
 namespace MantidQt {
 namespace CustomInterfaces {
 DECLARE_SUBWINDOW(ALCInterface)
@@ -40,6 +42,20 @@ ALCInterface::ALCInterface(QWidget *parent)
       m_baselineModellingModel(new ALCBaselineModellingModel()),
       m_peakFittingModel(new ALCPeakFittingModel()) {}
 
+
+ALCInterface::~ALCInterface()
+{
+  // If currently loading data - delay destructor until algorithm is cancelled. 
+  if ( m_dataLoading)
+    {
+    this->m_dataLoading->m_closeRequested = true;
+    if ( this->m_dataLoading->m_loadingData == true)
+    {
+      this->m_dataLoading->m_LoadingAlg->cancel();
+    }
+  }
+}
+
 void ALCInterface::initLayout() {
   m_ui.setupUi(this);
 
@@ -50,7 +66,6 @@ void ALCInterface::initLayout() {
 
   auto dataLoadingView = new ALCDataLoadingView(m_ui.dataLoadingView);
   m_dataLoading = new ALCDataLoadingPresenter(dataLoadingView);
-  m_dataLoading->setParent(this);
   m_dataLoading->initialize();
 
   m_baselineModellingView =

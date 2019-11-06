@@ -9,16 +9,17 @@
 
 #include "MantidAPI/MatrixWorkspace.h"
 #include "MantidKernel/System.h"
-
 #include "DllConfig.h"
 #include "IALCDataLoadingView.h"
-
+#include <atomic>
 #include <QFileSystemWatcher>
 #include <QObject>
 
 #include <atomic>
 #include <Poco/ActiveResult.h>
 
+#include "MantidAPI/AlgorithmManager.h"
+#include "MantidAPI/Run.h"
 namespace MantidQt {
 namespace CustomInterfaces {
 
@@ -29,7 +30,7 @@ class MANTIDQT_MUONINTERFACE_DLL ALCDataLoadingPresenter : public QObject {
 
 public:
   ALCDataLoadingPresenter(IALCDataLoadingView *view);
-  ~ALCDataLoadingPresenter();
+  //~ALCDataLoadingPresenter();
 
   void initialize();
 
@@ -41,6 +42,18 @@ public:
 
   /// Sets some data
   void setData(Mantid::API::MatrixWorkspace_sptr data);
+
+  // create a ActiveResult object
+  const Poco::ActiveResult<bool> * m_result;
+
+  // bool loading data
+  bool m_loadingData ;
+
+  // close requested
+  std::atomic<bool> m_closeRequested;
+
+  // 
+  Mantid::API::IAlgorithm_sptr m_LoadingAlg;
 
 private slots:
   /// Check file range and call method to load new data
@@ -94,8 +107,6 @@ private:
   /// Number of detectors for current first run
   size_t m_numDetectors;
 
-  // create a ActiveResult object
-  const Poco::ActiveResult<bool> * m_result;
 
 };
 

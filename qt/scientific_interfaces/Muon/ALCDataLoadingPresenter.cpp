@@ -31,19 +31,8 @@ using namespace MantidQt::API;
 namespace MantidQt {
 namespace CustomInterfaces {
 ALCDataLoadingPresenter::ALCDataLoadingPresenter(IALCDataLoadingView *view)
-    : m_view(view), m_directoryChanged(false), m_timerID(), m_numDetectors(0), m_result(nullptr) {}
-
-
-ALCDataLoadingPresenter::~ALCDataLoadingPresenter(){
-  // check whether execution thread exists
-  if ( m_result != nullptr)
-  {
-     while (!m_result->available()) {
-      QCoreApplication::processEvents();
-    }
-  }
-}
-
+    : m_view(view), m_directoryChanged(false), m_timerID(), m_numDetectors(0), m_loadingData(false),
+    m_closeRequested(false) {}
 
 
 void ALCDataLoadingPresenter::initialize() {
@@ -145,6 +134,7 @@ void ALCDataLoadingPresenter::changeWatchState(int state) {
  * @param lastFile :: [input] Last file in range (user-specified or auto)
  */
 void ALCDataLoadingPresenter::load(const std::string &lastFile) {
+  m_loadingData = true;
   m_view->disableAll();
   // Use Path.toString() to ensure both are in same (native) format
   Poco::Path firstRunPath(m_view->firstRun());
@@ -200,17 +190,20 @@ void ALCDataLoadingPresenter::load(const std::string &lastFile) {
 
     alg->setPropertyValue("OutputWorkspace", "__NotUsed");
 
+
+    this->m_LoadingAlg = alg;
     // Execute async so we can show progress bar
     Poco::ActiveResult<bool> result(alg->executeAsync());
-    m_result = &result;
     while (!result.available()) {
-      QCoreApplication::processEvents();
+         QCoreApplication::processEvents();
     }
     if (!result.error().empty()) {
+      std::cout << "returning " << std::endl;
+      return;
       throw std::runtime_error(result.error());
     }
-    m_result = nullptr;
-    
+
+    m_loadingData = false;
 
     MatrixWorkspace_sptr tmp = alg->getProperty("OutputWorkspace");
     IAlgorithm_sptr sortAlg = AlgorithmManager::Instance().create("SortXAxis");
@@ -220,6 +213,12 @@ void ALCDataLoadingPresenter::load(const std::string &lastFile) {
     sortAlg->setProperty("OutputWorkspace", "__NotUsed__");
 
     sortAlg->execute();
+
+    // If the parent has been destroyed 
+    // if (this->parent() == nullptr)
+    // {
+    //   return;
+    // }
     m_loadedData = sortAlg->getProperty("OutputWorkspace");
 
     // If errors are properly caught, shouldn't happen
