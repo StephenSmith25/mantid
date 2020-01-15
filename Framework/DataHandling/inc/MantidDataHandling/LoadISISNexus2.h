@@ -162,6 +162,9 @@ private:
   /// Is there a detector block
   bool m_have_detector;
 
+  // Is there a VMS block
+  bool m_hasVMSBlock;
+
   /// if true, a spectra list or range of spectra is supplied
   bool m_load_selected_spectra;
   /// map of workspace Index to spectra Number (spectraID)
@@ -176,8 +179,6 @@ private:
 
   /// Time channels
   boost::shared_ptr<HistogramData::HistogramX> m_tof_data;
-  /// Proton charge
-  double m_proton_charge;
   /// Spectra numbers
   boost::shared_array<int> m_spec;
   /// Pointer to one-past-the-end of spectrum number array (m_spec)
