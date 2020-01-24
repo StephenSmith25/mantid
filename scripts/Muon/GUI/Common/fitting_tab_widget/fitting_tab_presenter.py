@@ -114,10 +114,7 @@ class FittingTabPresenter(object):
         current_index = self.view.get_index_for_start_end_times()
         self.view.start_time = self.start_x[current_index]
         self.view.end_time = self.end_x[current_index]
-
-        self.view.set_datasets_in_function_browser(
-            [self.view.display_workspace])
-        self.view.function_browser_multi.setCurrentDataset(current_index)
+        self.view.function_browser.setCurrentDataset(current_index)
 
         self.update_fit_status_information_in_view()
 
@@ -160,31 +157,11 @@ class FittingTabPresenter(object):
         self.model.change_plot_guess(self.view.plot_guess, parameters)
 
     def fitting_domain_type_changed(self):
-        # If the fit function has been removed we should remove clear both browsers and the fit information
-        # and return.
-        if self._fit_function[0] is None:
-            self.clear_fit_information()
-            self.view.function_browser.clear()
-            self.view.function_browser_multi.clear()
-
         if self.view.fit_type == self.view.simultaneous_fit:
             self.view.switch_to_simultaneous()
+
         else:
             self.view.switch_to_single()
-
-    def sync_single_domain_browser_with_multi_domain_browser(self):
-        multi_domain_function = self.create_multi_domain_function(self._fit_function)
-        if multi_domain_function:
-            self.view.function_browser_multi.blockSignals(True)
-            self.view.function_browser_multi.setFunction(str(multi_domain_function))
-            self.view.function_browser_multi.blockSignals(False)
-
-    def sync_multi_domain_browser_with_single_domain_browser(self):
-        single_domain_function = self._fit_function[0]
-        if single_domain_function:
-            self.view.function_browser.blockSignals(True)
-            self.view.function_browser.setFunction(str(single_domain_function))
-            self.view.function_browser.blockSignals(False)
 
     def handle_fit_clicked(self):
         self.context.fitting_context.number_of_fits = 0
@@ -202,7 +179,6 @@ class FittingTabPresenter(object):
                 self._number_of_fits_cached = 1
                 simultaneous_fit_parameters = self.get_multi_domain_fit_parameters()
                 global_parameters = self.view.get_global_parameters()
-                print(simultaneous_fit_parameters)
                 calculation_function = functools.partial(
                     self.model.do_simultaneous_fit,
                     simultaneous_fit_parameters, global_parameters)
@@ -211,6 +187,7 @@ class FittingTabPresenter(object):
             else:
                 self._number_of_fits_cached = 1
                 single_fit_parameters = self.get_parameters_for_single_fit()
+
                 calculation_function = functools.partial(
                     self.model.do_single_fit, single_fit_parameters)
                 self.calculation_thread = self.create_thread(
@@ -289,12 +266,10 @@ class FittingTabPresenter(object):
         fit_function, fit_status, fit_chi_squared = self.fitting_calculation_model.result
         if any([not fit_function, not fit_status, not fit_chi_squared]):
             return
-        index = self.view.get_index_for_start_end_times()
 
-        if self.view.fit_type == self.view.simultaneous_fit:
-            self._fit_function = [fit_function] * len(self.start_x)
-            self._fit_status = [fit_status] * len(self.start_x)
-            self._fit_chi_squared = [fit_chi_squared] * len(self.start_x)
+        self._fit_function = [fit_function] * len(self.start_x)
+        self._fit_status = [fit_status] * len(self.start_x)
+        self._fit_chi_squared = [fit_chi_squared] * len(self.start_x)
 
         self.update_fit_status_information_in_view()
         self.view.undo_fit_button.setEnabled(True)
@@ -337,12 +312,6 @@ class FittingTabPresenter(object):
             self.view.function_name = self.model.get_function_name(
                 self.view.fit_object)
             self.model.function_name = self.view.function_name
-
-        # resync browsers
-        if self.view.fit_type == self.view.simultaneous_fit:
-            self.sync_multi_domain_browser_with_single_domain_browser()
-        else:
-            self.sync_single_domain_browser_with_multi_domain_browser()
 
     def handle_tf_asymmetry_mode_changed(self):
         def calculate_tf_fit_function(original_fit_function):
@@ -397,12 +366,12 @@ class FittingTabPresenter(object):
         else:
             new_function = calculate_tf_fit_function(self.view.fit_object)
             self._fit_function = [new_function.clone()] * len(self.selected_data)
-            self.view.function_browser_multi.blockSignals(True)
-            self.view.function_browser_multi.clear()
-            self.view.function_browser_multi.setFunction(
+            self.view.function_browser.blockSignals(True)
+            self.view.function_browser.clear()
+            self.view.function_browser.setFunction(
                 str(self._fit_function[self.view.get_index_for_start_end_times()]))
-            self.view.function_browser_multi.setGlobalParameters(new_global_parameters)
-            self.view.function_browser_multi.blockSignals(False)
+            self.view.function_browser.setGlobalParameters(new_global_parameters)
+            self.view.function_browser.blockSignals(False)
 
         self.update_fit_status_information_in_view()
         self.handle_display_workspace_changed()
@@ -449,7 +418,6 @@ class FittingTabPresenter(object):
 
     def get_parameters_for_single_fit(self):
         params = self._get_shared_parameters()
-
         params['InputWorkspace'] = self.view.display_workspace
         params['StartX'] = self.start_x[0]
         params['EndX'] = self.end_x[0]
@@ -481,7 +449,7 @@ class FittingTabPresenter(object):
         :return: The set of attributes common to all fit types
         """
         return {
-            'Function': self.view.fit_object,
+            'Function': self.get_fit_function(),
             'Minimizer': self.view.minimizer,
             'EvaluationType': self.view.evaluation_type
         }
@@ -499,9 +467,7 @@ class FittingTabPresenter(object):
         self.clear_and_reset_gui_state()
 
     def clear_and_reset_gui_state(self):
-        single_data = [self.selected_data[0]] if self.selected_data else []
-        self.view.set_datasets_in_function_browser(single_data)
-        self.view.set_datasets_in_function_browser_multi(self.selected_data)
+        self.view.set_datasets_in_function_browser(self.selected_data)
 
         self._fit_status = [None] * len(
             self.selected_data) if self.selected_data else [None]
@@ -593,6 +559,19 @@ class FittingTabPresenter(object):
             multi_domain_function.setDomainIndex(index, index)
 
         return multi_domain_function
+
+    def get_fit_function(self):
+        fit_function = self.view.fit_object
+        if self.view.fit_type != self.view.simultaneous_fit:
+            if fit_function and isinstance(fit_function, list):
+                fit_function = self.view.fit_object[0]
+                fit_function = fit_function.createEquivalentFunctions()[0]
+                self._fit_function = self.view.fit_object.createEquivalentFunctions()
+            elif fit_function:
+                fit_function = self.view.fit_object.createEquivalentFunctions()[0]
+                self._fit_function = self.view.fit_object.createEquivalentFunctions()
+
+        return fit_function
 
     def _get_selected_groups_and_pairs(self):
         return self.context.group_pair_context.selected_groups + self.context.group_pair_context.selected_pairs

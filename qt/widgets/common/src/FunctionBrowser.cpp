@@ -344,5 +344,9 @@ void FunctionBrowser::setBackgroundA0(double value) {
   m_presenter->setBackgroundA0(value);
 }
 
+void FunctionBrowser::hideGlobalCheckbox() { m_presenter->hideGlobals(); }
+
+void FunctionBrowser::showGlobalCheckbox() { m_presenter->showGlobals(); }
+
 } // namespace MantidWidgets
 } // namespace MantidQt
