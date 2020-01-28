@@ -39,4 +39,3 @@ class FittingTabWidget(object):
         self.fitting_tab_view.plot_guess_checkbox.stateChanged.connect(self.fitting_tab_presenter.handle_plot_guess_changed)
         self.fitting_tab_view.function_browser.parameterChanged.connect(self.fitting_tab_presenter.handle_function_parameter_changed)
         self.fitting_tab_view.function_browser.parameterChanged.connect(self.fitting_tab_presenter.handle_plot_guess_changed)
-        self.fitting_tab_view.simul_fit_checkbox.toggled.connect(self.fitting_tab_presenter.fitting_domain_type_changed)
