@@ -1,47 +1,30 @@
 // Mantid Repository : https://github.com/mantidproject/mantid
 //
-// Copyright &copy; 2018 ISIS Rutherford Appleton Laboratory UKRI,
+// Copyright &copy; 2020 ISIS Rutherford Appleton Laboratory UKRI,
 //     NScD Oak Ridge National Laboratory, European Spallation Source
 //     & Institut Laue - Langevin
 // SPDX - License - Identifier: GPL - 3.0 +
-//----------------------------------------------------------------------
-// Includes
-//----------------------------------------------------------------------
 #include "MantidDataHandling/LoadMuonNexus3.h"
-#include "MantidDataHandling/DataBlockGenerator.h"
-#include "MantidDataHandling/LoadEventNexus.h"
 #include "MantidDataHandling/LoadISISNexus2.h"
-#include "MantidDataHandling/LoadISISNexusHelper.h"
-#include "MantidDataHandling/LoadRawHelper.h"
+#include "MantidDataHandling/LoadMuonNexus3Helper.h"
 
-#include "MantidAPI/Axis.h"
 #include "MantidAPI/FileProperty.h"
 #include "MantidAPI/RegisterFileLoader.h"
 #include "MantidAPI/WorkspaceFactory.h"
-#include "MantidGeometry/Instrument.h"
-#include "MantidGeometry/Instrument/Detector.h"
+#include "MantidAPI/WorkspaceGroup.h"
+#include "MantidDataHandling/ISISRunLogs.h"
+#include "MantidDataObjects/Workspace2D.h"
+
 #include "MantidKernel/ArrayProperty.h"
 #include "MantidKernel/BoundedValidator.h"
 #include "MantidKernel/ConfigService.h"
-#include "MantidKernel/ListValidator.h"
-//#include "MantidKernel/LogParser.h"
-#include "MantidKernel/LogFilter.h"
-#include "MantidKernel/TimeSeriesProperty.h"
-#include "MantidKernel/UnitFactory.h"
 
 // clang-format off
-#include <nexus/NeXusFile.hpp>
 #include <nexus/NeXusException.hpp>
 // clang-format on
 
-#include <algorithm>
-#include <cmath>
-#include <cctype>
-#include <climits>
 #include <functional>
-#include <sstream>
 #include <vector>
-
 #include <iostream>
 namespace Mantid {
 namespace DataHandling {
@@ -53,10 +36,12 @@ using namespace API;
 using namespace NeXus;
 using namespace HistogramData;
 using std::size_t;
+using namespace DataObjects;
 
 /// Empty default constructor
 LoadMuonNexus3::LoadMuonNexus3()
-    : m_filename(), m_instrumentName(), m_sampleName() {}
+    : m_filename(), m_instrumentName(), m_sampleName(),
+      m_isFileMultiPeriod(false), m_multiPeriodsLoaded(false) {}
 
 /**
  * Return the confidence criteria for this algorithm can load the file
@@ -149,11 +134,46 @@ void LoadMuonNexus3::exec() {
   // we need to execute the child algorithm LoadISISNexus2, as this
   // will do the majority of the loading for us
   runLoadISISNexus();
+  Workspace_sptr outWS = getProperty("OutputWorkspace");
 
+  // Open the nexus entry
+  m_entrynumber = getProperty("EntryNumber");
+  m_filename = getPropertyValue("Filename");
+  // Create the root Nexus class
+  NXRoot root(m_filename);
+  // Open the raw data group 'raw_data_1'
+  NXEntry entry = root.openEntry("raw_data_1");
   // What do we have to do next? At this point we have all the workspaces loaded
   // If its multi period we have a workspace group
-  API::Workspace_sptr outWS = getProperty("OutputWorkspace");
-  outWS->setTitle("chaning the workspace title");
+  isEntryMultiPeriod(entry);
+
+  // DO lots of stuff to this workspace
+  if (m_multiPeriodsLoaded) {
+    WorkspaceGroup_sptr wksp_grp =
+        boost::dynamic_pointer_cast<WorkspaceGroup>(outWS);
+    addGoodFrames(wksp_grp, entry);
+    LoadMuonNexus3Helper::loadGoodFramesData(entry, true);
+  } else {
+    // we just have a single workspace
+    Workspace2D_sptr workspace2D =
+        boost::dynamic_pointer_cast<DataObjects::Workspace2D>(outWS);
+    addGoodFrames(workspace2D, entry);
+  }
+}
+// Determine whether file is multi period, and whether we have more than 1
+// period loaded
+void LoadMuonNexus3::isEntryMultiPeriod(const NXEntry &entry) {
+  NXClass periodClass = entry.openNXGroup("periods");
+  int numberOfPeriods = periodClass.getInt("number");
+  if (numberOfPeriods > 1) {
+    m_isFileMultiPeriod = true;
+    if (m_entrynumber == 0) {
+      m_multiPeriodsLoaded = true;
+    }
+  } else {
+    m_isFileMultiPeriod = false;
+    m_multiPeriodsLoaded = false;
+  }
 }
 /**
  * Runs the child algorithm LoadISISNexus, which loads data into an output
@@ -163,43 +183,49 @@ void LoadMuonNexus3::runLoadISISNexus() {
   IAlgorithm_sptr childAlg =
       createChildAlgorithm("LoadISISNexus", 0, 1, true, 2);
   declareProperty("LoadMonitors", "Exclude"); // we need to set this property
-
   auto ISISLoader = boost::dynamic_pointer_cast<API::Algorithm>(childAlg);
   ISISLoader->copyPropertiesFrom(*this);
   ISISLoader->executeAsChildAlg();
   this->copyPropertiesFrom(*ISISLoader);
 }
 /**
- * Loads dead time table for the detector.
- * @param root :: Root entry of the Nexus to read dead times from
+ * Loads the good frames assuming we have just one workspace loaded
+ * for a workspace 2d object
  */
-void LoadMuonNexus3::loadDeadTimes(NXRoot &root) const {
-  // If dead times workspace name is empty - caller doesn't need dead times
-  if (getPropertyValue("DeadTimeTable").empty())
-    return;
-  try {
-    NXEntry deadTimes = root.openEntry("raw_data_1/detector_1/dead_time");
-  } catch (...) {
+void LoadMuonNexus3::addGoodFrames(
+    DataObjects::Workspace2D_sptr &localWorkspace, const NXEntry &entry) {
+
+  auto &run = localWorkspace->mutableRun();
+  run.removeProperty("goodfrm");
+  NXInt goodframes =
+      LoadMuonNexus3Helper::loadGoodFramesData(entry, m_isFileMultiPeriod);
+  if (m_isFileMultiPeriod) {
+    run.addProperty("goodfrm", goodframes[static_cast<int>(m_entrynumber - 1)]);
+  } else {
+    run.addProperty("goodfrm", goodframes[0]);
   }
 }
-// Create dead time table
-DataObjects::TableWorkspace_sptr
-LoadMuonNexus3::createDeadTimeTable(const std::vector<int> &specToLoad,
-                                    const std::vector<double> &deadTimes) {
-  std::cout << "3" << std::endl;
-}
-/**
- * Loads detector grouping.
- * If no entry in NeXus file for grouping, load it from the IDF.
- * @param root :: Root entry of the Nexus file to read from
- * @param inst :: Pointer to instrument (to use if IDF needed)
- * @returns :: Grouping table - or tables, if per period
- */
-Workspace_sptr LoadMuonNexus3::loadDetectorGrouping(
-    NXRoot &root, Geometry::Instrument_const_sptr inst) const {
+// Overload #2 Takes in a workspace_group if we have loaded multiple periods
+void LoadMuonNexus3::addGoodFrames(WorkspaceGroup_sptr &workspaceGroup,
+                                   const NXEntry &entry) {
 
-  NXEntry dataEntry = root.openEntry("run/histogram_data_1");
-  NXInfo infoGrouping = dataEntry.getDataSetInfo("grouping");
+  NXInt goodframes =
+      LoadMuonNexus3Helper::loadGoodFramesData(entry, m_isFileMultiPeriod);
+
+  // check there is a good frames entry for each period
+  if (goodframes.dim0() < workspaceGroup->getNumberOfEntries()) {
+    g_log.warning("Good frames data not available for each period loaded!\n");
+    return;
+  }
+
+  auto workspaceList = workspaceGroup->getAllItems();
+  for (auto it = workspaceList.begin(); it != workspaceList.end(); ++it) {
+    auto index = std::distance(workspaceList.begin(), it);
+    Workspace2D_sptr ws = boost::dynamic_pointer_cast<Workspace2D>(*it);
+    auto &run = ws->mutableRun();
+    run.removeProperty("goodfrm");
+    run.addProperty("goodfrm", goodframes[static_cast<int>(index)]);
+  }
 }
 
 } // namespace DataHandling
