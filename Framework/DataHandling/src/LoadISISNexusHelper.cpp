@@ -49,7 +49,8 @@ int64_t findNumberOfSpectra(const NXEntry &entry, const bool hasVMSBlock) {
  *   @param entry :: The Nexus entry
  *   @param hasVMSBlock :: Whether the current nexus entry has a vms_compat
  * block
- *   @return Returns a pair of Detector IDs and Spectrum numbers
+ *   @return Returns a pair containing the Detector IDs corresponding Spectrum
+ * numbers
  */
 std::tuple<NXInt, NXInt>
 findDetectorIDsAndSpectrumNumber(const NXEntry &entry, const bool hasVMSBlock) {
@@ -63,8 +64,8 @@ findDetectorIDsAndSpectrumNumber(const NXEntry &entry, const bool hasVMSBlock) {
     NXClass det_class = entry.openNXGroup("detector_1");
     NXInt spectrum_index = det_class.openNXInt("spectrum_index");
     spectrum_index.load();
-    // Currently there is no UDET variable anywhere, so
-    // setting it to spectrum index assumes a 1 to 1 correspondence between
+    // In the new v2 file there is no UDET variable
+    // Setting it to spectrum index assumes a 1 to 1 correspondence between
     // detector id and spectrum i.e detector 1 maps to spectrum 1
     NXInt udet = spectrum_index;
     NXInt spec = spectrum_index;
