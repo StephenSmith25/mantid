@@ -4,19 +4,36 @@
 //     NScD Oak Ridge National Laboratory, European Spallation Source
 //     & Institut Laue - Langevin
 // SPDX - License - Identifier: GPL - 3.0 +
-#ifndef MANTID_DATAHANDLING_LOADMUONNEXUS3HELPER_H_
-#define MANTID_DATAHANDLING_LOADMUONNEXUS3HELPER_H_
+#pragma once
 
+#include "MantidAPI/WorkspaceGroup_fwd.h"
+#include "MantidDataObjects/TableWorkspace.h"
+#include "MantidDataObjects/Workspace2D.h"
+#include "MantidGeometry/IDTypes.h"
 #include "MantidNexus/NexusClasses.h"
+
+#include <boost/scoped_array.hpp>
+#include <boost/scoped_ptr.hpp>
+
+#include <vector>
 
 namespace Mantid {
 namespace DataHandling {
 namespace LoadMuonNexus3Helper {
 
-NeXus::NXInt loadGoodFramesData(const NeXus::NXEntry &entry,
-                                bool isFileMultiPeriod);
-}
+// Loads the good frame data from the nexus file
+NeXus::NXInt loadGoodFramesDataFromNexus(const NeXus::NXEntry &entry,
+                                         bool isFileMultiPeriod);
+// Loads the grouping data from the nexus file
+DataObjects::TableWorkspace_sptr
+loadDetectorGroupingFromNexus(NeXus::NXRoot &root,
+                              DataObjects::Workspace2D_sptr &localWorkspace,
+                              bool isFileMultiPeriod);
+
+/// Creates Detector Grouping Table using all the data from the range
+DataObjects::TableWorkspace_sptr
+createDetectorGroupingTable(std::vector<detid_t> specToLoad,
+                            std::vector<detid_t> grouping);
+} // namespace LoadMuonNexus3Helper
 } // namespace DataHandling
 } // namespace Mantid
-
-#endif

@@ -13,6 +13,7 @@
 #include "MantidDataHandling/DataBlockComposite.h"
 #include "MantidDataObjects/TableWorkspace.h"
 #include "MantidDataObjects/Workspace2D.h"
+#include "MantidGeometry/IDTypes.h"
 
 #include <boost/scoped_array.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -77,7 +78,6 @@ private:
   void init() override;
   /// Overwrites Algorithm method
   void exec() override;
-  void checkOptionalProperties();
   // Determines whether entry contains multi period data
   void isEntryMultiPeriod(const NeXus::NXEntry &entry);
   // Run child algorithm LoadISISNexus3
@@ -96,18 +96,22 @@ private:
   // Load the detector grouping
   API::Workspace_sptr
   loadDetectorGrouping(NeXus::NXRoot &root,
-                       Mantid::Geometry::Instrument_const_sptr inst) const;
+                       DataObjects::Workspace2D_sptr &localWorkspace) const;
+  // Load the default dectory grouping
+  API::Workspace_sptr loadDefaultDetectorGrouping(
+      NeXus::NXRoot &root, DataObjects::Workspace2D_sptr &localWorkspace) const;
+
+  /// Creates Detector Grouping Table using all the data from the range
+  DataObjects::TableWorkspace_sptr
+  createDetectorGroupingTable(std::vector<detid_t> specToLoad,
+                              std::vector<detid_t> grouping) const;
 
   /// The name and path of the input file
   std::string m_filename;
-  /// The instrument name from Nexus
-  std::string m_instrumentName;
   /// The sample name read from Nexus
   std::string m_sampleName;
   /// The number of the input entry
   int64_t m_entrynumber;
-  /// The number of spectra in the raw file
-  int64_t m_numberOfSpectra;
   /// The number of periods in the raw file
   int64_t m_numberOfPeriods;
   /// Has the spectrum_list property been set?

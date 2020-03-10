@@ -10,14 +10,18 @@
 
 #include "MantidAPI/FileProperty.h"
 #include "MantidAPI/RegisterFileLoader.h"
+#include "MantidAPI/TableRow.h"
 #include "MantidAPI/WorkspaceFactory.h"
 #include "MantidAPI/WorkspaceGroup.h"
+
 #include "MantidDataHandling/ISISRunLogs.h"
 #include "MantidDataObjects/Workspace2D.h"
 
+#include "MantidGeometry/Instrument.h"
 #include "MantidKernel/ArrayProperty.h"
 #include "MantidKernel/BoundedValidator.h"
 #include "MantidKernel/ConfigService.h"
+#include "MantidKernel/OptionalBool.h"
 
 // clang-format off
 #include <nexus/NeXusException.hpp>
@@ -26,6 +30,7 @@
 #include <functional>
 #include <vector>
 #include <iostream>
+
 namespace Mantid {
 namespace DataHandling {
 
@@ -40,8 +45,8 @@ using namespace DataObjects;
 
 /// Empty default constructor
 LoadMuonNexus3::LoadMuonNexus3()
-    : m_filename(), m_instrumentName(), m_sampleName(),
-      m_isFileMultiPeriod(false), m_multiPeriodsLoaded(false) {}
+    : m_filename(), m_sampleName(), m_isFileMultiPeriod(false),
+      m_multiPeriodsLoaded(false) {}
 
 /**
  * Return the confidence criteria for this algorithm can load the file
@@ -95,40 +100,6 @@ void LoadMuonNexus3::init() {
       "Table or a group of tables with information about the "
       "detector grouping stored in the file (if any). Version 1 only.");
 }
-
-/// Validates the optional 'spectra to read' properties, if they have been set
-void LoadMuonNexus3::checkOptionalProperties() {
-  // read in the settings passed to the algorithm
-  m_specList = getProperty("SpectrumList");
-  m_specMax = getProperty("SpectrumMax");
-  // Are we using a list of spectra or all the spectra in a range?
-  m_list = !m_specList.empty();
-  m_interval = (m_specMax != EMPTY_INT());
-  if (m_specMax == EMPTY_INT())
-    m_specMax = 0;
-
-  // Check validity of spectra list property, if set
-  if (m_list) {
-    const specnum_t minlist =
-        *min_element(m_specList.begin(), m_specList.end());
-    const specnum_t maxlist =
-        *max_element(m_specList.begin(), m_specList.end());
-    if (maxlist > m_numberOfSpectra || minlist == 0) {
-      g_log.error("Invalid list of spectra");
-      throw std::invalid_argument("Inconsistent properties defined");
-    }
-  }
-
-  // Check validity of spectra range, if set
-  if (m_interval) {
-    m_specMin = getProperty("SpectrumMin");
-    if (m_specMax < m_specMin || m_specMax > m_numberOfSpectra) {
-      g_log.error("Invalid Spectrum min/max properties");
-      throw std::invalid_argument("Inconsistent properties defined");
-    }
-  }
-}
-
 void LoadMuonNexus3::exec() {
 
   // we need to execute the child algorithm LoadISISNexus2, as this
@@ -152,14 +123,19 @@ void LoadMuonNexus3::exec() {
     WorkspaceGroup_sptr wksp_grp =
         boost::dynamic_pointer_cast<WorkspaceGroup>(outWS);
     addGoodFrames(wksp_grp, entry);
-    LoadMuonNexus3Helper::loadGoodFramesData(entry, true);
   } else {
     // we just have a single workspace
     Workspace2D_sptr workspace2D =
         boost::dynamic_pointer_cast<DataObjects::Workspace2D>(outWS);
+    int64_t numberOfSpectra =
+        static_cast<int64_t>(workspace2D->getNumberHistograms());
     addGoodFrames(workspace2D, entry);
+    Workspace_sptr table = loadDetectorGrouping(root, workspace2D);
+    setProperty("DetectorGroupingTable",
+                boost::dynamic_pointer_cast<Workspace>(table));
   }
 }
+
 // Determine whether file is multi period, and whether we have more than 1
 // period loaded
 void LoadMuonNexus3::isEntryMultiPeriod(const NXEntry &entry) {
@@ -197,8 +173,8 @@ void LoadMuonNexus3::addGoodFrames(
 
   auto &run = localWorkspace->mutableRun();
   run.removeProperty("goodfrm");
-  NXInt goodframes =
-      LoadMuonNexus3Helper::loadGoodFramesData(entry, m_isFileMultiPeriod);
+  NXInt goodframes = LoadMuonNexus3Helper::loadGoodFramesDataFromNexus(
+      entry, m_isFileMultiPeriod);
   if (m_isFileMultiPeriod) {
     run.addProperty("goodfrm", goodframes[static_cast<int>(m_entrynumber - 1)]);
   } else {
@@ -209,12 +185,12 @@ void LoadMuonNexus3::addGoodFrames(
 void LoadMuonNexus3::addGoodFrames(WorkspaceGroup_sptr &workspaceGroup,
                                    const NXEntry &entry) {
 
-  NXInt goodframes =
-      LoadMuonNexus3Helper::loadGoodFramesData(entry, m_isFileMultiPeriod);
+  NXInt goodframes = LoadMuonNexus3Helper::loadGoodFramesDataFromNexus(
+      entry, m_isFileMultiPeriod);
 
   // check there is a good frames entry for each period
   if (goodframes.dim0() < workspaceGroup->getNumberOfEntries()) {
-    g_log.warning("Good frames data not available for each period loaded!\n");
+    g_log.warning("Good frames data is not available for each period loaded\n");
     return;
   }
 
@@ -227,6 +203,60 @@ void LoadMuonNexus3::addGoodFrames(WorkspaceGroup_sptr &workspaceGroup,
     run.addProperty("goodfrm", goodframes[static_cast<int>(index)]);
   }
 }
+/**
+ * Loads detector grouping.
+ * If no entry in NeXus file for grouping, load it from the IDF.
+ * @param root :: Root entry of the Nexus file to read from
+ * @param localWorkspace :: A pointer to the workspace in which the data is
+ * stored
+ * @returns :: Grouping table
+ */
+Workspace_sptr LoadMuonNexus3::loadDetectorGrouping(
+    NXRoot &root, DataObjects::Workspace2D_sptr &localWorkspace) const {
 
+  TableWorkspace_sptr table =
+      LoadMuonNexus3Helper::loadDetectorGroupingFromNexus(root, localWorkspace,
+                                                          m_isFileMultiPeriod);
+
+  if (table->rowCount() != 0) {
+    Workspace_sptr table_workspace =
+        boost::dynamic_pointer_cast<Workspace>(table);
+    return table_workspace;
+  } else {
+    g_log.warning("Loading grouping from IDF");
+    return nullptr;
+  }
+}
+/**
+ * Loads default detector grouping, if this isn't present
+ * return dummy grouping
+ * If no entry in NeXus file for grouping, load it from the IDF.
+ * @param root :: Root entry of the Nexus file to read from
+ * @param localWorkspace :: A pointer to the workspace in which the data is
+ * @returns :: Grouping table
+ */
+Workspace_sptr LoadMuonNexus3::loadDefaultDetectorGrouping(
+    NXRoot &root, DataObjects::Workspace2D_sptr &localWorkspace) const {
+  int a = 3;
+  // auto instrument = localWorkspace->getInstrument();
+  // std::string mainFieldDirection = getProperty("MainFieldDirection");
+  // API::GroupingLoader groupLoader(inst, mainFieldDirection);
+  // try {
+  //   const auto idfGrouping = groupLoader.getGroupingFromIDF();
+  //   return idfGrouping->toTable();
+  // } catch (const std::runtime_error &) {
+  //   auto dummyGrouping = boost::make_shared<Grouping>();
+  //   if (inst->getNumberDetectors() != 0) {
+  //     dummyGrouping = groupLoader.getDummyGrouping();
+  //   } else {
+  //     // Make sure it uses the right number of detectors
+  //     std::ostringstream oss;
+  //     oss << "1-" << m_numberOfSpectra;
+  //     dummyGrouping->groups.emplace_back(oss.str());
+  //     dummyGrouping->groupNames.emplace_back("all");
+  //   }
+  //   return dummyGrouping->toTable();
+  // }
+}
 } // namespace DataHandling
 } // namespace Mantid
