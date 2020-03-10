@@ -34,6 +34,8 @@ loadDetectorGroupingFromNexus(NeXus::NXRoot &root,
 DataObjects::TableWorkspace_sptr
 createDetectorGroupingTable(std::vector<detid_t> specToLoad,
                             std::vector<detid_t> grouping);
+
+std::string loadMainFieldDirectionFromNexus(const NeXus::NXEntry &entry);
 } // namespace LoadMuonNexus3Helper
 } // namespace DataHandling
 } // namespace Mantid

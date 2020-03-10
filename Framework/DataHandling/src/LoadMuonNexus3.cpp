@@ -5,6 +5,7 @@
 //     & Institut Laue - Langevin
 // SPDX - License - Identifier: GPL - 3.0 +
 #include "MantidDataHandling/LoadMuonNexus3.h"
+#include "MantidAPI/GroupingLoader.h"
 #include "MantidDataHandling/LoadISISNexus2.h"
 #include "MantidDataHandling/LoadMuonNexus3Helper.h"
 
@@ -129,13 +130,14 @@ void LoadMuonNexus3::exec() {
         boost::dynamic_pointer_cast<DataObjects::Workspace2D>(outWS);
     int64_t numberOfSpectra =
         static_cast<int64_t>(workspace2D->getNumberHistograms());
+    // Load the log data
+    loadMuonLogData(entry, workspace2D);
     addGoodFrames(workspace2D, entry);
     Workspace_sptr table = loadDetectorGrouping(root, workspace2D);
     setProperty("DetectorGroupingTable",
                 boost::dynamic_pointer_cast<Workspace>(table));
   }
 }
-
 // Determine whether file is multi period, and whether we have more than 1
 // period loaded
 void LoadMuonNexus3::isEntryMultiPeriod(const NXEntry &entry) {
@@ -164,6 +166,18 @@ void LoadMuonNexus3::runLoadISISNexus() {
   ISISLoader->executeAsChildAlg();
   this->copyPropertiesFrom(*ISISLoader);
 }
+
+void LoadMuonNexus3::loadMuonLogData(
+    const NXEntry &entry, DataObjects::Workspace2D_sptr &localWorkspace) {
+  int a = 3;
+  int b = 4;
+  std::string mainFieldDirection =
+      LoadMuonNexus3Helper::loadMainFieldDirectionFromNexus(entry);
+  // set output property and add to workspace logs
+  auto &run = localWorkspace->mutableRun();
+  run.addProperty("main_field_direction", mainFieldDirection);
+}
+
 /**
  * Loads the good frames assuming we have just one workspace loaded
  * for a workspace 2d object
@@ -217,15 +231,14 @@ Workspace_sptr LoadMuonNexus3::loadDetectorGrouping(
   TableWorkspace_sptr table =
       LoadMuonNexus3Helper::loadDetectorGroupingFromNexus(root, localWorkspace,
                                                           m_isFileMultiPeriod);
-
+  Workspace_sptr table_workspace;
   if (table->rowCount() != 0) {
-    Workspace_sptr table_workspace =
-        boost::dynamic_pointer_cast<Workspace>(table);
-    return table_workspace;
+    table_workspace = boost::dynamic_pointer_cast<Workspace>(table);
   } else {
     g_log.warning("Loading grouping from IDF");
-    return nullptr;
+    table_workspace = loadDefaultDetectorGrouping(root, localWorkspace);
   }
+  return table_workspace;
 }
 /**
  * Loads default detector grouping, if this isn't present
@@ -238,25 +251,28 @@ Workspace_sptr LoadMuonNexus3::loadDetectorGrouping(
 Workspace_sptr LoadMuonNexus3::loadDefaultDetectorGrouping(
     NXRoot &root, DataObjects::Workspace2D_sptr &localWorkspace) const {
   int a = 3;
-  // auto instrument = localWorkspace->getInstrument();
-  // std::string mainFieldDirection = getProperty("MainFieldDirection");
-  // API::GroupingLoader groupLoader(inst, mainFieldDirection);
-  // try {
-  //   const auto idfGrouping = groupLoader.getGroupingFromIDF();
-  //   return idfGrouping->toTable();
-  // } catch (const std::runtime_error &) {
-  //   auto dummyGrouping = boost::make_shared<Grouping>();
-  //   if (inst->getNumberDetectors() != 0) {
-  //     dummyGrouping = groupLoader.getDummyGrouping();
-  //   } else {
-  //     // Make sure it uses the right number of detectors
-  //     std::ostringstream oss;
-  //     oss << "1-" << m_numberOfSpectra;
-  //     dummyGrouping->groups.emplace_back(oss.str());
-  //     dummyGrouping->groupNames.emplace_back("all");
-  //   }
-  //   return dummyGrouping->toTable();
-  // }
+  auto instrument = localWorkspace->getInstrument();
+  auto &run = localWorkspace->mutableRun();
+  std::string mainFieldDirection =
+      run.getLogData("main_field_direction")->value();
+  API::GroupingLoader groupLoader(instrument, mainFieldDirection);
+  try {
+    const auto idfGrouping = groupLoader.getGroupingFromIDF();
+    return idfGrouping->toTable();
+  } catch (const std::runtime_error &) {
+    auto dummyGrouping = boost::make_shared<Grouping>();
+    if (instrument->getNumberDetectors() != 0) {
+      dummyGrouping = groupLoader.getDummyGrouping();
+    } else {
+      // Make sure it uses the right number of detectors
+      std::ostringstream oss;
+      oss << "1-" << localWorkspace->getNumberHistograms();
+      dummyGrouping->groups.emplace_back(oss.str());
+      dummyGrouping->groupNames.emplace_back("all");
+    }
+    return dummyGrouping->toTable();
+  }
 }
+
 } // namespace DataHandling
 } // namespace Mantid

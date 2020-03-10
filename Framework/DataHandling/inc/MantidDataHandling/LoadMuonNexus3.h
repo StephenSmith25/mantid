@@ -87,6 +87,10 @@ private:
                      const NeXus::NXEntry &entry);
   void addGoodFrames(API::WorkspaceGroup_sptr &workspaceGroup,
                      const NeXus::NXEntry &entry);
+
+  // Load Muon log data
+  void loadMuonLogData(const NeXus::NXEntry &entry,
+                       DataObjects::Workspace2D_sptr &localWorkspace);
   /// Loads dead time table for the detector
   void loadDeadTimes(NeXus::NXRoot &root) const;
   // create the dead time table

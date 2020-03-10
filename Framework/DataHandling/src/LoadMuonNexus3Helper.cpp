@@ -110,11 +110,29 @@ createDetectorGroupingTable(std::vector<detid_t> detectorsLoaded,
   }
 
   for (auto &group : groupingMap) {
-    TableRow newRow = detectorGroupingTable->appendRow();
-    newRow << group.second;
+    if (group.first != 0) { // Skip 0 group
+      TableRow newRow = detectorGroupingTable->appendRow();
+      newRow << group.second;
+    }
+  }
+  return detectorGroupingTable;
+}
+
+std::string loadMainFieldDirectionFromNexus(const NeXus::NXEntry &entry) {
+  std::string mainFieldDirection = "Longitudinal"; // default
+  try {
+    NXChar orientation =
+        entry.openNXChar("run/instrument/detector/orientation");
+    // some files have no data there
+    orientation.load();
+    if (orientation[0] == 't') {
+      mainFieldDirection = "Transverse";
+    }
+  } catch (...) {
+    // no data - assume main field was longitudinal
   }
 
-  return detectorGroupingTable;
+  return mainFieldDirection;
 }
 
 } // namespace LoadMuonNexus3Helper
