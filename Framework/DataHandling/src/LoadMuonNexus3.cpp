@@ -166,11 +166,21 @@ void LoadMuonNexus3::runLoadISISNexus() {
   ISISLoader->executeAsChildAlg();
   this->copyPropertiesFrom(*ISISLoader);
 }
-
+// Loads MuonLogData for a single period file
 void LoadMuonNexus3::loadMuonLogData(
     const NXEntry &entry, DataObjects::Workspace2D_sptr &localWorkspace) {
-  int a = 3;
-  int b = 4;
+  IAlgorithm_sptr loadLog = createChildAlgorithm("LoadMuonLog");
+  // Pass through the same input filename
+  loadLog->setPropertyValue("Filename", m_filename);
+  // Set the workspace property to be the same one filled above
+  loadLog->setProperty<MatrixWorkspace_sptr>("Workspace", localWorkspace);
+  // Now execute the Child Algorithm. Catch and log any error, but don't stop.
+  try {
+    loadLog->execute();
+  } catch (std::runtime_error &) {
+    g_log.error("Unable to successfully run LoadMuonLog Child Algorithm");
+  }
+
   std::string mainFieldDirection =
       LoadMuonNexus3Helper::loadMainFieldDirectionFromNexus(entry);
   // set output property and add to workspace logs

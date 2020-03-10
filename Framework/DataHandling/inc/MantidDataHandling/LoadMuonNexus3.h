@@ -4,8 +4,7 @@
 //     NScD Oak Ridge National Laboratory, European Spallation Source
 //     & Institut Laue - Langevin
 // SPDX - License - Identifier: GPL - 3.0 +
-#ifndef MANTID_DATAHANDLING_LoadMuonNexus3_H_
-#define MANTID_DATAHANDLING_LoadMuonNexus3_H_
+#pragma once
 
 #include "MantidAPI/Algorithm.h"
 #include "MantidAPI/IFileLoader.h"
@@ -26,7 +25,7 @@ namespace Mantid {
 namespace DataHandling {
 /** @class LoadMuonNexus3 LoadMuonNexus3.h DataHandling/LoadMuonNexus3.h
 
-Loads an file in Nexus Muon format version 2 and stores it in a 2D workspace
+Loads a file in the Nexus Muon format version 2 and stores it in a 2D workspace
 (Workspace2D class). LoadMuonNexus is an algorithm and as such inherits
 from the Algorithm class, via DataHandlingCommand, and overrides
 the init() & exec() methods.
@@ -138,5 +137,3 @@ private:
 
 } // namespace DataHandling
 } // namespace Mantid
-
-#endif
