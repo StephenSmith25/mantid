@@ -10,6 +10,7 @@
 #include "MantidAPI/IFileLoader.h"
 #include "MantidAPI/WorkspaceGroup_fwd.h"
 #include "MantidDataHandling/DataBlockComposite.h"
+#include "MantidDataHandling/LoadMuonStrategy.h"
 #include "MantidDataObjects/TableWorkspace.h"
 #include "MantidDataObjects/Workspace2D.h"
 #include "MantidGeometry/IDTypes.h"
@@ -97,9 +98,8 @@ private:
   createDeadTimeTable(const std::vector<int> &specToLoad,
                       const std::vector<double> &deadTimes);
   // Load the detector grouping
-  API::Workspace_sptr
-  loadDetectorGrouping(NeXus::NXRoot &root,
-                       DataObjects::Workspace2D_sptr &localWorkspace) const;
+  void loadDetectorGrouping(NeXus::NXRoot &root,
+                            DataObjects::Workspace2D_sptr &localWorkspace);
   // Load the default dectory grouping
   API::Workspace_sptr loadDefaultDetectorGrouping(
       NeXus::NXRoot &root, DataObjects::Workspace2D_sptr &localWorkspace) const;
@@ -133,6 +133,8 @@ private:
   int64_t m_specMax;
   /// The group which each detector belongs to in order
   std::vector<specnum_t> m_groupings;
+  // The loading stratergy used
+  std::unique_ptr<LoadMuonStrategy> m_loadMuonStrategy;
 };
 
 } // namespace DataHandling
