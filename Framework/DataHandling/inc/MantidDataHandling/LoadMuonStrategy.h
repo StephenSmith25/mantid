@@ -30,6 +30,8 @@ public:
   virtual void loadGoodFrames() = 0;
   // Load detector grouping
   virtual API::Workspace_sptr loadDetectorGrouping() = 0;
+  // Load dead time table
+  virtual void loadDeadTimeTable() const = 0;
 
 protected:
   /// Logger

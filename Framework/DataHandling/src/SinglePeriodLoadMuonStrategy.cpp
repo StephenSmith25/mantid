@@ -125,6 +125,16 @@ SinglePeriodLoadMuonStrategy::loadDefaultDetectorGrouping() const {
     return dummyGrouping->toTable();
   }
 }
+/**
+ * Loads dead time table, if this isn't present
+ * @returns :: Dead time table
+ */
+void SinglePeriodLoadMuonStrategy::loadDeadTimeTable() const {
+
+  int b = 3;
+  int c = 3;
+  std::cout << "LOADING DEAD TIME TABLE" << std::endl;
+}
 
 } // namespace DataHandling
 } // namespace Mantid

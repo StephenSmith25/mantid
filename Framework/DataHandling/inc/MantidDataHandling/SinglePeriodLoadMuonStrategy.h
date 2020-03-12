@@ -34,6 +34,8 @@ public:
   API::Workspace_sptr loadDetectorGrouping() override;
   // Load default grouping from ID
   API::Workspace_sptr loadDefaultDetectorGrouping() const;
+  // Load dead time table
+  void loadDeadTimeTable() const override;
 
 private:
   NeXus::NXEntry m_entry;
